@@ -123,34 +123,60 @@ export function CourseShell({ initialProgress, userName }: CourseShellProps) {
     }
   }, [finishedAt, startedAt]);
 
-  const saveAttempt = useEffectEvent(async (metrics: AttemptMetrics) => {
-    const response = await fetch("/api/attempt", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        levelId: selectedLevel.id,
-        ...metrics,
-      }),
-    });
-
-    if (!response.ok) {
-      const payload = (await response.json()) as { error?: string };
-      throw new Error(payload.error ?? "Attempt could not be saved.");
+  useEffect(() => {
+    if (!startedAt || finishedAt) {
+      return;
     }
 
-    const payload = (await response.json()) as AttemptResult;
-    setProgress(payload.progress);
+    function handleVisibilityChange() {
+      if (document.hidden) {
+        // Pause by recording current elapsed
+        setElapsedMs(Date.now() - startedAt!);
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [startedAt, finishedAt]);
+
+  const saveAttempt = useEffectEvent(async (metrics: AttemptMetrics) => {
+    let response: Response;
+    let payload: unknown;
+
+    try {
+      response = await fetch("/api/attempt", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          levelId: selectedLevel.id,
+          ...metrics,
+        }),
+      });
+
+      payload = await response.json();
+    } catch {
+      throw new Error("Attempt could not be saved.");
+    }
+
+    if (!response.ok) {
+      throw new Error((payload as { error?: string }).error ?? "Attempt could not be saved.");
+    }
+
+    const result = payload as AttemptResult;
+    setProgress(result.progress);
     setLastAttempt({
       ...metrics,
-      passed: payload.passed,
-      unlockedLevelId: payload.unlockedLevelId,
+      passed: result.passed,
+      unlockedLevelId: result.unlockedLevelId,
     });
 
-    if (payload.passed) {
+    if (result.passed) {
       setAttemptMessage(
-        payload.unlockedLevelId
+        result.unlockedLevelId
           ? "Level cleared. The next lesson is now unlocked."
           : "Level cleared. You finished the course.",
       );
@@ -259,7 +285,7 @@ export function CourseShell({ initialProgress, userName }: CourseShellProps) {
           </div>
         </header>
 
-        <section className="stats-row">
+        <section className="stats-row" aria-live="polite">
           <article>
             <span>WPM</span>
             <strong>{formatNumber(currentStats.wpm)}</strong>
@@ -293,6 +319,8 @@ export function CourseShell({ initialProgress, userName }: CourseShellProps) {
             className="typing-input"
             value={typedText}
             onChange={(event) => handleTextChange(event.target.value)}
+            onPaste={(e) => e.preventDefault()}
+            onDrop={(e) => e.preventDefault()}
             autoCapitalize="off"
             autoComplete="off"
             autoCorrect="off"
@@ -387,8 +415,8 @@ export function CourseShell({ initialProgress, userName }: CourseShellProps) {
           </article>
         </section>
 
-        {isSaving ? <p className="status-note">Saving attempt...</p> : null}
-        {errorMessage ? <p className="status-note error">{errorMessage}</p> : null}
+        {isSaving ? <p className="status-note" role="status">Saving attempt...</p> : null}
+        {errorMessage ? <p className="status-note error" role="alert">{errorMessage}</p> : null}
       </section>
     </div>
   );

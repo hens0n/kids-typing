@@ -1,4 +1,4 @@
-import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 
 import { db } from "@/lib/db";
@@ -25,6 +25,10 @@ function normalizeUsername(username: string) {
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function hashToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
 }
 
 function hashPassword(password: string) {
@@ -132,7 +136,13 @@ export function authenticateUser(username: string, password: string) {
     )
     .get(normalizedUsername) as UserRow | undefined;
 
-  if (!row || !verifyPassword(password, row.password_hash)) {
+  if (!row) {
+    // Perform dummy hash to prevent timing-based user enumeration
+    scryptSync("dummy", "0".repeat(32), 64);
+    return null;
+  }
+
+  if (!verifyPassword(password, row.password_hash)) {
     return null;
   }
 
@@ -162,7 +172,7 @@ export async function createSession(userId: number) {
       INSERT INTO sessions (token, user_id, expires_at, created_at)
       VALUES (?, ?, ?, ?)
     `,
-  ).run(token, userId, expiresAt.toISOString(), createdAt.toISOString());
+  ).run(hashToken(token), userId, expiresAt.toISOString(), createdAt.toISOString());
 
   await setSessionCookie(token, expiresAt.toISOString());
 }
@@ -172,7 +182,7 @@ export async function clearSession() {
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
   if (token) {
-    db.prepare(`DELETE FROM sessions WHERE token = ?`).run(token);
+    db.prepare(`DELETE FROM sessions WHERE token = ?`).run(hashToken(token));
   }
 
   cookieStore.delete(SESSION_COOKIE_NAME);
@@ -186,6 +196,8 @@ export async function getCurrentUser() {
     return null;
   }
 
+  const hashedToken = hashToken(token);
+
   const row = db
     .prepare(
       `
@@ -195,7 +207,7 @@ export async function getCurrentUser() {
         WHERE sessions.token = ?
       `,
     )
-    .get(token) as
+    .get(hashedToken) as
     | {
         id: number;
         username: string;
@@ -210,7 +222,7 @@ export async function getCurrentUser() {
   }
 
   if (row.expires_at <= nowIso()) {
-    db.prepare(`DELETE FROM sessions WHERE token = ?`).run(token);
+    db.prepare(`DELETE FROM sessions WHERE token = ?`).run(hashedToken);
     cookieStore.delete(SESSION_COOKIE_NAME);
     return null;
   }

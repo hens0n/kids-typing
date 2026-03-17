@@ -4,7 +4,7 @@
   --panel-strong: #122034;
   --panel-soft: rgba(255, 255, 255, 0.08);
   --text: #edf3ff;
-  --muted: #9fb2cf;
+  --muted: #8da0bc;
   --accent: #f2c14e;
   --accent-soft: rgba(242, 193, 78, 0.18);
   --success: #7ed6a4;
@@ -12,6 +12,7 @@
   --current: #87d3ff;
   --border: rgba(255, 255, 255, 0.12);
   --shadow: 0 24px 80px rgba(5, 9, 19, 0.35);
+  color-scheme: dark;
 }
 
 * {
@@ -25,6 +26,7 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-x: hidden;
   color: var(--text);
   font-family: "Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif;
   background:
@@ -47,7 +49,7 @@ textarea {
 .marketing-page,
 .app-page {
   min-height: 100vh;
-  padding: 32px;
+  padding: max(32px, env(safe-area-inset-top)) max(32px, env(safe-area-inset-right)) max(32px, env(safe-area-inset-bottom)) max(32px, env(safe-area-inset-left));
 }
 
 .auth-shell,
@@ -114,6 +116,7 @@ textarea {
 .stats-row article {
   border: 1px solid var(--border);
   background: var(--panel);
+  -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
   box-shadow: var(--shadow);
 }
@@ -215,12 +218,26 @@ textarea {
   background: rgba(255, 255, 255, 0.05);
 }
 
+.auth-form input::placeholder {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.auth-form input:-webkit-autofill,
+.auth-form input:-webkit-autofill:hover,
+.auth-form input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--panel-strong) inset;
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--text);
+}
+
 .auth-form input:focus-visible,
 .typing-input:focus-visible,
 .level-tile:focus-visible,
 .ghost-button:focus-visible,
 .primary-button:focus-visible,
-.link-button:focus-visible {
+.link-button:focus-visible,
+.auth-tab:focus-visible {
   outline: 2px solid var(--current);
   outline-offset: 2px;
 }
@@ -249,12 +266,26 @@ textarea {
   border-color: var(--border);
 }
 
-.primary-button:hover,
-.ghost-button:hover,
-.level-tile:hover,
-.auth-tab:hover,
-.link-button:hover {
-  transform: translateY(-1px);
+@media (hover: hover) {
+  .primary-button:hover,
+  .ghost-button:hover,
+  .level-tile:hover,
+  .auth-tab:hover,
+  .link-button:hover {
+    transform: translateY(-1px);
+  }
+}
+
+.primary-button:active,
+.ghost-button:active,
+.level-tile:active {
+  transform: scale(0.97);
+}
+
+.primary-button:disabled,
+.ghost-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .app-header {
@@ -285,6 +316,8 @@ textarea {
   position: sticky;
   top: 24px;
   padding: 22px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
 }
 
 .level-rail h2 {
@@ -392,6 +425,11 @@ textarea {
   inset: 0;
   opacity: 0;
   cursor: default;
+}
+
+.typing-stage:focus-within {
+  outline: 2px solid var(--current);
+  outline-offset: 2px;
 }
 
 .prompt-text {
@@ -512,7 +550,7 @@ textarea {
 @media (max-width: 720px) {
   .marketing-page,
   .app-page {
-    padding: 18px;
+    padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
   }
 
   .auth-copy h1,
@@ -540,5 +578,14 @@ textarea {
 
   .keyboard-row {
     flex-wrap: wrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

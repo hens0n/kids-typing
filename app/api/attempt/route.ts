@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
 import { recordAttempt } from "@/lib/progress";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -20,7 +21,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await request.json()) as Record<string, unknown>;
+  if (!checkRateLimit(`attempt:${user.id}`, 30, 60_000)) {
+    return NextResponse.json({ error: "Too many attempts. Please slow down." }, { status: 429 });
+  }
+
+  let body: Record<string, unknown>;
+  try {
+    body = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
   const levelId = typeof body.levelId === "string" ? body.levelId : "";
   const wpm = asNumber(body.wpm);
   const accuracy = asNumber(body.accuracy);

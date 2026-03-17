@@ -1,4 +1,17 @@
+"use client";
+
+import { useFormStatus } from "react-dom";
+
 import { loginAction, registerAction } from "@/app/actions/auth";
+
+function SubmitButton({ children }: { children: React.ReactNode }) {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" className="primary-button" disabled={pending}>
+      {pending ? "Working..." : children}
+    </button>
+  );
+}
 
 type AuthPanelProps = {
   activeTab: "login" | "create";
@@ -40,12 +53,16 @@ export function AuthPanel({ activeTab, errorMessage }: AuthPanelProps) {
           <a
             className={activeTab === "login" ? "auth-tab active" : "auth-tab"}
             href="/?tab=login"
+            role="tab"
+            aria-selected={activeTab === "login"}
           >
             Sign in
           </a>
           <a
             className={activeTab === "create" ? "auth-tab active" : "auth-tab"}
             href="/?tab=create"
+            role="tab"
+            aria-selected={activeTab === "create"}
           >
             Create account
           </a>
@@ -69,9 +86,7 @@ export function AuthPanel({ activeTab, errorMessage }: AuthPanelProps) {
                 required
               />
             </label>
-            <button type="submit" className="primary-button">
-              Start typing
-            </button>
+            <SubmitButton>Start typing</SubmitButton>
           </form>
         ) : (
           <form action={registerAction} className="auth-form">
@@ -93,9 +108,7 @@ export function AuthPanel({ activeTab, errorMessage }: AuthPanelProps) {
                 required
               />
             </label>
-            <button type="submit" className="primary-button">
-              Create account
-            </button>
+            <SubmitButton>Create account</SubmitButton>
           </form>
         )}
       </div>
